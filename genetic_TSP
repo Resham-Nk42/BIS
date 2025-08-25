@@ -1,0 +1,127 @@
+import random
+import numpy as np
+import matplotlib.pyplot as plt
+
+
+def generate_cities(n_cities, x_max=100, y_max=100):
+    return [(random.uniform(0, x_max), random.uniform(0, y_max)) for _ in range(n_cities)]
+
+
+def distance(city1, city2):
+    return np.sqrt((city1[0] - city2[0]) ** 2 + (city1[1] - city2[1]) ** 2)
+
+
+def total_distance(path, cities):
+    return sum(distance(cities[path[i]], cities[path[(i + 1) % len(path)]]) for i in range(len(path)))
+
+
+def generate_population(pop_size, n_cities):
+    population = []
+    for _ in range(pop_size):
+        individual = list(range(n_cities))
+        random.shuffle(individual)
+        population.append(individual)
+    return population
+
+
+def tournament_selection(population, fitnesses, k=3):
+    selected = random.sample(list(zip(population, fitnesses)), k)
+    selected.sort(key=lambda x: x[1])
+    return selected[0][0]
+
+
+def crossover(parent1, parent2):
+    size = len(parent1)
+    start, end = sorted(random.sample(range(size), 2))
+    child = [None]*size
+    child[start:end+1] = parent1[start:end+1]
+    
+    fill = [item for item in parent2 if item not in child]
+    idx = 0
+    for i in range(size):
+        if child[i] is None:
+            child[i] = fill[idx]
+            idx += 1
+    return child
+
+
+def mutate(individual, mutation_rate):
+    for i in range(len(individual)):
+        if random.random() < mutation_rate:
+            j = random.randint(0, len(individual)-1)
+            individual[i], individual[j] = individual[j], individual[i]
+
+
+def genetic_algorithm_tsp(
+    cities,
+    pop_size=100,
+    generations=500,
+    crossover_rate=0.8,
+    mutation_rate=0.01
+):
+    n_cities = len(cities)
+    population = generate_population(pop_size, n_cities)
+    best_distance = float('inf')
+    best_path = None
+
+    for generation in range(generations):
+        fitnesses = [total_distance(ind, cities) for ind in population]
+        
+        new_population = []
+        for _ in range(pop_size):
+            parent1 = tournament_selection(population, fitnesses)
+            parent2 = tournament_selection(population, fitnesses)
+            
+            if random.random() < crossover_rate:
+                child = crossover(parent1, parent2)
+            else:
+                child = parent1[:]
+            
+            mutate(child, mutation_rate)
+            new_population.append(child)
+        
+        population = new_population
+
+        
+        current_best = min(population, key=lambda ind: total_distance(ind, cities))
+        current_best_dist = total_distance(current_best, cities)
+
+        if current_best_dist < best_distance:
+            best_distance = current_best_dist
+            best_path = current_best
+
+        if generation % 50 == 0 or generation == generations - 1:
+            print(f"Generation {generation}: Best Distance = {best_distance:.2f}")
+
+    return best_path, best_distance
+
+
+def plot_path(cities, path, title="Best TSP Path"):
+    x = [cities[i][0] for i in path] + [cities[path[0]][0]]
+    y = [cities[i][1] for i in path] + [cities[path[0]][1]]
+    plt.figure(figsize=(10, 6))
+    plt.plot(x, y, 'o-', color='blue')
+    for i, city in enumerate(path):
+        plt.text(cities[city][0], cities[city][1], str(city), fontsize=12)
+    plt.title(title)
+    plt.xlabel('X')
+    plt.ylabel('Y')
+    plt.grid()
+    plt.show()
+
+
+if __name__ == "__main__":
+    n_cities = 20
+    cities = generate_cities(n_cities)
+
+    best_path, best_dist = genetic_algorithm_tsp(
+        cities,
+        pop_size=100,
+        generations=500,
+        crossover_rate=0.9,
+        mutation_rate=0.02
+    )
+
+    print(f"\nBest distance found: {best_dist:.2f}")
+    print(f"Best path: {best_path}")
+    plot_path(cities, best_path)
