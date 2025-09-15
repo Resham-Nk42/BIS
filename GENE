@@ -1,0 +1,90 @@
+import numpy as np
+import random
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import cross_val_score
+
+
+np.random.seed(42)
+X = np.random.rand(100, 10)             
+y = np.random.randint(0, 2, size=100)     
+
+
+POP_SIZE = 100
+NUM_GENERATIONS = 50
+MUTATION_RATE = 0.1
+CROSSOVER_RATE = 0.7
+NUM_GENES = X.shape[1]  
+
+def fitness(individual, X, y):
+    selected = np.where(individual == 1)[0]
+    if len(selected) == 0:
+        return 0  
+    X_selected = X[:, selected]
+
+   
+    model = LogisticRegression(max_iter=500)
+    scores = cross_val_score(model, X_selected, y, cv=3)
+    return np.mean(scores)  
+
+
+def initialize_population(pop_size, num_genes):
+    return [np.random.randint(2, size=num_genes) for _ in range(pop_size)]
+
+
+def tournament_selection(population, fitness_values, t_size=5):
+    selected = random.sample(range(len(population)), t_size)
+    best_idx = max(selected, key=lambda i: fitness_values[i])
+    return population[best_idx]
+
+
+def crossover(p1, p2):
+    if random.random() < CROSSOVER_RATE:
+        point = random.randint(1, len(p1) - 1)
+        return (np.concatenate([p1[:point], p2[point:]]),
+                np.concatenate([p2[:point], p1[point:]]))
+    return p1.copy(), p2.copy()
+
+
+def mutate(ind):
+    for i in range(len(ind)):
+        if random.random() < MUTATION_RATE:
+            ind[i] = 1 - ind[i]
+    return ind
+
+
+def genetic_algorithm(X, y, generations=NUM_GENERATIONS, pop_size=POP_SIZE):
+    population = initialize_population(pop_size, NUM_GENES)
+    best_solution, best_fitness = None, -1
+
+    for gen in range(generations):
+        fitness_values = [fitness(ind, X, y) for ind in population]
+
+      
+        best_idx = np.argmax(fitness_values)
+        if fitness_values[best_idx] > best_fitness:
+            best_fitness = fitness_values[best_idx]
+            best_solution = population[best_idx].copy()
+
+        next_gen = [best_solution]
+
+        
+        while len(next_gen) < pop_size:
+            p1 = tournament_selection(population, fitness_values)
+            p2 = tournament_selection(population, fitness_values)
+            c1, c2 = crossover(p1, p2)
+            next_gen.append(mutate(c1))
+            if len(next_gen) < pop_size:
+                next_gen.append(mutate(c2))
+
+        population = next_gen
+        print(f"Generation {gen+1}, Best Fitness (Accuracy): {best_fitness:.4f}")
+
+    return best_solution, best_fitness
+
+
+best_solution, best_fitness = genetic_algorithm(X, y)
+best_genes = np.where(best_solution == 1)[0]
+
+print("\n==== Final Result ====")
+print(f"Selected Genes: {best_genes}")
+print(f"Best Accuracy: {best_fitness:.4f}")
