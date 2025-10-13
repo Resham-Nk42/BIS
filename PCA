@@ -1,0 +1,69 @@
+import numpy as np
+
+def parallel_cellular_resource_allocation_simple(grid_size=(5, 5), total_resource=1000, iterations=30, alpha=0.3):
+    """
+    Resource Allocation using Parallel Cellular Algorithm (PCA)
+    Displays resource grid in a simple table format and shows the best solution.
+    """
+
+    rows, cols = grid_size
+    num_cells = rows * cols
+
+
+    resources = np.random.rand(rows, cols)
+    resources = (resources / np.sum(resources)) * total_resource
+
+    print(f"\nInitial Total Resources: {np.sum(resources):.2f}")
+
+    
+    for _ in range(iterations):
+        new_resources = resources.copy()
+
+        for i in range(rows):
+            for j in range(cols):
+               
+                neighbors = []
+                for dx in [-1, 0, 1]:
+                    for dy in [-1, 0, 1]:
+                        if dx == 0 and dy == 0:
+                            continue
+                        ni, nj = (i + dx) % rows, (j + dy) % cols
+                        neighbors.append(resources[ni, nj])
+
+                avg_neighbor = np.mean(neighbors)
+                new_resources[i, j] = (1 - alpha) * resources[i, j] + alpha * avg_neighbor
+
+      
+        new_resources = (new_resources / np.sum(new_resources)) * total_resource
+        resources = new_resources
+
+    print(f"Final Total Resources: {np.sum(resources):.2f}")
+
+   
+    best_value = np.max(resources)
+    best_pos = np.unravel_index(np.argmax(resources), resources.shape)
+
+    
+    print("\nFinal Resource Allocation Grid (in units):\n")
+    for i in range(rows):
+        for j in range(cols):
+            val = resources[i, j]
+            if (i, j) == best_pos:
+                print(f"[{val:6.2f}*]", end="  ")  # mark best cell with *
+            else:
+                print(f"{val:8.2f}", end="  ")
+        print()  # new line per row
+
+    print(f"\n✅ Best Cell: {best_pos} with Resource = {best_value:.2f}\n")
+
+    return resources, best_pos, best_value
+
+
+
+if __name__ == "__main__":
+    grid, best_pos, best_val = parallel_cellular_resource_allocation_simple(
+        grid_size=(10, 10),
+        total_resource=500,
+        iterations=30,
+        alpha=0.3
+    )
